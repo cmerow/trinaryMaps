@@ -24,3 +24,4 @@ vignettes/*.pdf
 *.knit.md
 .DS_Store
 .Rbuildignore
+.Rproj.user

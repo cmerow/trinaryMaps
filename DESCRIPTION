@@ -1,11 +1,20 @@
 Package: trinaryMaps
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Build trinary (not binary) maps thats show upper and lowe bounds on species' ranges
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Cory Merow 
+Maintainer: Cory Merow <cory.merow@gmail.com>
+Description: This package contains a collection of tools for thresholding range maps. The goal is to avoid the often arbitrary designation of binary range maps be choosing upper and lower bounds on viable thresholds, beyond which higher/lower threshold do not contain useful information for species' range modeling applications.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    cmsdm,
+    pROC,
+    raster
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown    
+RoxygenNote: 6.0.1
+VignetteBuilder: knitr

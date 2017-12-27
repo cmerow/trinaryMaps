@@ -1,21 +1,56 @@
 #################################################################
 #################################################################
 #################################################################
+#' @title Make Trinary maps from previous workflow runs
+#'
+#' @description Read in workflow info, make trinary maps and plot vs thresholds
+#'
+#' @details
+#' See Examples.
+#'
+# #' @param mod.out
+# #' @param stats
+# #' @param proj.env
+# #' @param name
+# @keywords
+#'
+# @examples
+#'
+#'
+#' @return a data.frame
+#' @author Cory Merow <cory.merow@@gmail.com>
+# @note
+# @seealso
+# @references
+# @aliases - a list of additional topic names that will be mapped to
+# this documentation when the user looks them up from the command
+# line.
+# @family - a family name. All functions that have the same family tag will be linked in the documentation.
 #' @export
-trinaryMapPlot=function(plotF=NULL,trinary.rasters,pres,expertRaster.f=NULL,expertShp=NULL,shapesToPlot=NULL,openFig=T){
 
-	if(!is.null(plotF)){
-		pdf(plotf,h=7,w=7)
+trinaryMapPlot=function(trinary.rasters,
+												plotFile=NULL,
+												pres=NULL,
+												species,
+												expertShpPath=NULL,
+												expertRasterPath=NULL,
+												shapesToPlot=NULL,
+												openFig=T){
+
+	#for testing
+	# pres=NULL; expertRaster.f=NULL; expertShp=NULL; shapesToPlot=NULL
+	if(!is.null(plotFile)){
+		pdf(plotFile,h=7,w=7)
 	}
 
 		image(trinary.rasters, xlab='',ylab='',col=c('grey80','steelblue','red1'),xaxt='n', yaxt='n',bty='n',main=species)
-		if(!is.null(expertRaster.f)){
+		if(!is.null(expertRasterPath)){
 			true=raster(expertRaster.f)
 			image(true,add=T,col=c(rgb(0,0,0,0),rgb(0,0,0,.5)))
 		}
-		points(pres,col='grey90',pch='+',cex=.4)
-		if(!is.na(expertShp)) {
-			 tmp=readShapePoly(expertShp)
+		if(!is.null(pres)) points(pres,col='grey90',pch='+',cex=.4)
+		if(!is.null(expertShpPath)) {
+			 tmp=rgdal::readOGR(paste0(expertShpPath,'.shp'),verbose=F)
 			 projection(tmp)=projection(trinary.rasters)
 			 plot(tmp,add=T,border="black",col=grey(.6,.3),lwd=.9)
 		}
@@ -23,20 +58,51 @@ trinaryMapPlot=function(plotF=NULL,trinary.rasters,pres,expertRaster.f=NULL,expe
 			lapply(shapesToPlot,plot,add=T,lwd=.1,border='grey40')
 		}
 
-	if(!is.null(plotF)){
+	if(!is.null(plotFile)){
 		dev.off()
-		if(openFig) system(paste0('open ',plotf))
+		if(openFig) system(paste0('open ',plotFile))
 	}
 }
 
 
-#======================================================================
-#======================================================================
+#################################################################
+#################################################################
+#################################################################
+#' @title Make Trinary maps from previous workflow runs
+#'
+#' @description Read in workflow info, make trinary maps and plot vs thresholds
+#'
+#' @details
+#' See Examples.
+#'
+# #' @param mod.out
+# #' @param stats
+# #' @param proj.env
+# #' @param name
+# @keywords
+#'
+# @examples
+#'
+#'
+#' @return a data.frame
+#' @author Cory Merow <cory.merow@@gmail.com>
+# @note
+# @seealso
+# @references
+# @aliases - a list of additional topic names that will be mapped to
+# this documentation when the user looks them up from the command
+# line.
+# @family - a family name. All functions that have the same family tag will be linked in the documentation.
 
 #' @export
 
-trinaryROCPlot=function(plot.f=NULL,plotThings,out1){
-	if(!is.null(plot.f)) pdf(plot.f,h=1.6*7,w=7.6)
+trinaryROCPlot=function(ROCPlotFile=NULL,
+												plotThings,
+												out1,
+												openFig=T,
+												addMapPlot=FALSE){
+
+	if(!is.null(ROCPlotFile)) pdf(ROCPlotFile,h=1.6*7,w=7.6)
 		par(mfrow=c(3,2),mar=c(5,4,2,2))
 		plot(plotThings$xx,plotThings$y,type='l',lwd=4,ylim=c(0,1.08), main="ROC",xlab='1-specificity', ylab="sensitivity")
 		#abline(h=0,lty=2)
@@ -49,7 +115,7 @@ trinaryROCPlot=function(plot.f=NULL,plotThings,out1){
 		points(out1$youden.thresh.x,out1$youden.thresh.y,pch=21, bg='darkgoldenrod2')
 		points(out1$hi.thresh.x,out1$hi.thresh.y,pch=21,bg='steelblue')
 		points(out1$lo.thresh.x,out1$lo.thresh.y,pch=21,bg='red1')
-		text(.8,.2,paste0('pAUC =\n',round(a.pauc$auc,3)),cex=1.5)
+		text(.8,.2,paste0('pAUC =\n',round(plotThings$a.pauc$auc,3)),cex=1.5)
 		text(out1$youden.thresh.x+.02,out1$youden.thresh.y-.02, paste0('(',round(out1$youden.thresh.x,2),',', round(out1$youden.thresh.y,2),')'), adj=c(0,0), cex=1,col='darkgoldenrod2') 
 		text(out1$hi.thresh.x-.02,out1$hi.thresh.y+.03, paste0('(',round(out1$hi.thresh.x,2),',',round(out1$hi.thresh.y,2),')'),adj=c(1,0), cex=1,col='steelblue')
 		text(out1$lo.thresh.x+.02,out1$lo.thresh.y+.03, paste0('(',round(out1$lo.thresh.x,2),',',round(out1$lo.thresh.y,2),')'),adj=c(0,1), cex=1,col='red1')
@@ -92,13 +158,14 @@ trinaryROCPlot=function(plot.f=NULL,plotThings,out1){
 		#abline(v=.y..f(rate,skew),lty=2)
 		##abline(v=x.root,col='blue',lty=2)
 		#lines(ss$x,ss$y,col='blue')
-		if(!is.null(trinaryPlotArgs)){
-			range.size=trinaryMap(dirs=dirs, modelPath=trinaryPlotArgs$modelPath, threshLo=plotThings$threshLo,threshHi=plotThings$threshHi,threshYouden=plotThings$threshYouden,expertShp=trinaryPlotArgs$expertShp, shapesToPlot=trinaryPlotArgs$shapesToPlot, pres=trinaryPlotArgs$pres,map.dir=plotThings$map.dir,expertRaster.f=trinaryPlotArgs$expertRaster.f)$range.size
-		} else {
-			range.size=NULL
+		
+		if(addMapPlot){
+			print('not done')
+			# have to push all these args, which is annoying
+			# trinaryMapPlot(trinary.rasters,plotFile,pres=pres, expertRasterPath=expertRasterPath,expertShpPath=expertShpPath,shapesToPlot=shapesToPlot,openFig=T)
 		}
+
 	
-	if(!is.null(plot.f)) dev.off()
-	if(openFig)	system(paste0('open ', plot.f))
-	range.size
+	if(!is.null(ROCPlotFile)) dev.off()
+	if(openFig)	system(paste0('open ', ROCPlotFile))
 }
