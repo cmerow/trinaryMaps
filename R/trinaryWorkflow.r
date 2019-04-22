@@ -75,7 +75,7 @@ trinaryMapWorkflow=function(pres,
 	range.size=trinaryRangeSize(trinary.rasters)
 	
 	# plot
-	plotFile=paste0(mapPlotDir,species,'_',modelNames,'.pdf')
+	plotFile=paste0(mapPlotDir,modelNames,'.pdf')
 	
 	if(doMapPlot) trinaryMapPlot(trinary.rasters,plotFile,pres=pres, species=species, expertRasterPath=expertRasterPath,expertShpPath=expertShpPath,shapesToPlot=shapesToPlot,openFig=openFig)
 	

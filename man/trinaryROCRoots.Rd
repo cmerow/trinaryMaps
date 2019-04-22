@@ -7,7 +7,7 @@
 trinaryROCRoots(ins, max.sens = 0.95)
 }
 \arguments{
-\item{mapOutputDir=NULL}{}
+\item{max.sens=0.95}{}
 }
 \value{
 a data.frame
