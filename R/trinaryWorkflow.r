@@ -46,19 +46,28 @@ trinaryMapWorkflow=function(pres,
 													  shapesToPlot=NULL,
 													  openFig=T,
 													  doMapPlot=TRUE,
-													  doROCPlot=TRUE){
+													  doROCPlot=TRUE,
+													  NATo0=TRUE){
 	
 	#  for testing
 	#  background=bg; doMapPlot=TRUE; doROCPlot=TRUE
 
 	p=raster::extract(model,pres)
 	a=raster::extract(model,background)
+	if(NATo0){
+		a[is.na(a)]=0
+		p[is.na(p)]=0
+	}
 	p <- na.omit(p)
 	a <- na.omit(a)
+	message(paste0(species,': ',length(p),' presences and ',length(a),' background points used for building trinary maps'))
 	ins=rbind(data.frame(Y=1,X=p),data.frame(Y=0,X=a))
 
 	# fit auc curves
-	threshs=trinaryROCRoots(ins=ins)
+	threshs=tryCatch(trinaryROCRoots(ins=ins),error=function(e) e)
+	if(class(threshs)=='try-error'){
+		message(paste0(species, ": couldn't find roots of the ROC curve; this often happens if you have  very few presence or background points"))
+	}
 	
 	# make maps
 	trinary.rasters=trinaryMap(model,
