@@ -41,3 +41,8 @@ logmod=function(x){sign(x)*log(abs(x))}
 .curv2=function(y.,y..){
 	abs(y..)/( (1+(y.^2))^1.5 )
 }
+
+#' @export
+.deriv <- function(x, y) diff(y) / diff(x)
+#' @export
+.middle_pts <- function(x) x[-1] - diff(x) / 2
