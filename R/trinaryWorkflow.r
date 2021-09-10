@@ -14,7 +14,6 @@
 #' @param pres.f
 #' @param plot.f
 #' @param map.dir
-#' @param plot.expert=TRUE
 #' @param openFig=FALSE
 #' @param expertRaster.f=NULL
 
@@ -25,7 +24,7 @@
 #'
 #' @return a data.frame
 #' @author Cory Merow <cory.merow@@gmail.com>
-# @note
+#' @note This is a convenience wrapper around each component of trinary map building.
 # @seealso
 # @references
 # @aliases - a list of additional topic names that will be mapped to
@@ -41,16 +40,14 @@ trinaryMapWorkflow=function(pres,
 													  rasterOutputDir=NULL,
 													  mapPlotDir=NULL,
 													  ROCPlotDir=NULL,
-													  expertShpPath=NULL,
-													  expertRasterPath=NULL,
+													  #expertShpPath=NULL,
+													  #expertRasterPath=NULL,
 													  shapesToPlot=NULL,
 													  openFig=T,
-													  doMapPlot=TRUE,
-													  doROCPlot=TRUE,
 													  NATo0=TRUE){
 	
 	#  for testing
-	#  background=bg; doMapPlot=TRUE; doROCPlot=TRUE
+	#  background=bg1; doMapPlot=TRUE; doROCPlot=TRUE; ROCPlotDir=mapPlotDir
 
 	p=raster::extract(model,pres)
 	a=raster::extract(model,background)
@@ -66,7 +63,8 @@ trinaryMapWorkflow=function(pres,
 	# fit auc curves
 	threshs=tryCatch(trinaryROCRoots(ins=ins),error=function(e) e)
 	if(class(threshs)=='try-error'){
-		message(paste0(species, ": couldn't find roots of the ROC curve; this often happens if you have  very few presence or background points"))
+		message(paste0(species, ": couldn't find roots of the ROC curve; this often happens if you have  very few presence or background points. so you're not getting any trinary maps'"))
+		return(list(threshs=NULL,trinary.rasters=NULL))
 	}
 	
 	# make maps
@@ -81,15 +79,15 @@ trinaryMapWorkflow=function(pres,
 												 		 datatype="INT1U", options=c("COMPRESS=DEFLATE"))
 								
 	# calculate stats
-	range.size=trinaryRangeSize(trinary.rasters)
+	range.size=trinaryRangeSize(trinary.rasters,model>threshs[[2]]$threshYouden)
 	
 	# plot
 	plotFile=paste0(mapPlotDir,modelNames,'.pdf')
 	
-	if(doMapPlot) trinaryMapPlot(trinary.rasters,plotFile,pres=pres, species=species, expertRasterPath=expertRasterPath,expertShpPath=expertShpPath,shapesToPlot=shapesToPlot,openFig=openFig)
+	if(!is.null(mapPlotDir)) trinaryMapPlot(trinary.rasters=trinary.rasters,plotFile=plotFile,pres=pres, species=species, shapesToPlot=shapesToPlot,openFig=openFig)
 	
 	ROCPlotFile=paste0(ROCPlotDir,species,'_',modelNames,'ROC.pdf')
-	if(doROCPlot) trinaryROCPlot(ROCPlotFile,plotThings=threshs$plotThings,out1=threshs[[1]],openFig=openFig)
+	if(!is.null(ROCPlotDir)) trinaryROCPlot(ROCPlotFile,plotThings=threshs$plotThings,out1=threshs[[1]],openFig=openFig)
 	
 	return(list(threshs=threshs,trinary.rasters=trinary.rasters))
 	

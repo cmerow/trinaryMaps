@@ -15,6 +15,7 @@
 # @param trinaryPlotArgs
 # @param openFig=FALSE
 # @param mapOutputDir=NULL
+# @param ... options to be passed to `pROC::smooth`
 # @keywords
 #'
 # @examples
@@ -32,12 +33,18 @@
 
 #' @export
 trinaryROCRoots=function(ins,
- 												 max.sens=0.95){
+ 												 max.sens=0.95,
+ 												 smoothMethod='binormal',...){
  												 
 out=try({
 	
-	a=pROC::smooth(pROC::roc(ins[,1], ins[,2]),n=1024)
-
+	aa=pROC::roc(ins[,1], ins[,2],quiet=T)
+	a=try(pROC::smooth(aa,method=smoothMethod, n=1024,...),silent=TRUE)
+	# i used this default because its the pROC package defualt so i assumed it was the best. if it breaks, try the next one
+	if(class(a)=='try-error') { 
+		a=pROC::smooth(aa,method='density',...)
+		message("Used method=density for ROC smoothing because your selected method (set by argument smoothMethod) broke. If you're unhappy about this, see other options for methods in ?pROC::smooth." )
+	}
 	xx=rev(1-a$specificities)
 	xx.=.middle_pts(xx)
 	xx..=.middle_pts(.middle_pts(xx))
@@ -51,29 +58,23 @@ out=try({
 	y....r <- .deriv(xx..., y...r)
 	
 	#== make the derivatives real functions so they can be evaluated at the x points (e.g. for curvature)
-	y.=approx(xx.,y.r,xout=xout,method='linear')$y
+	y.=suppressWarnings(approx(xx.,y.r,xout=xout,method='linear')$y)
 	y..=approx(xx..,y..r,xout=xout,method='linear')$y
 	y...=approx(xx...,y...r,xout=xout)$y
 	y....=approx(.middle_pts(xx...),y....r,xout=xout)$y
 	
-	#plot(xx.,y.r,type='l',log='y',lwd=3); lines(xout,y.,col='green')
-
-# 	int=cbind(aa$x,aa$y,aaa$x,aaa$y,aaaa$x,aaaa$y)
-# 	plot(xout,log(int[,6]),type='l')
-# 	plot(xout,logmod(int[,4]),col='red',type='l')
-# 	plot(xout,log(int[,2]),col='blue',type='l')
-
+	#== youden index 
 	youden=a$specificities+a$sensitivities-1
 	best.youden=which.max(youden)
 	y.youden=a$sensitivities[best.youden]
 	x.youden=(1-a$specificities)[best.youden]
 	
-	####keep=complete.cases(y..)
-	####y..1=y..[keep]
+	#== remove NAs 
 	keep=complete.cases(y..r)
 	y..1=y..r[keep]
-	#xx.1=xx.[keep]
+	xx..1=xx..[keep]
 
+	#== get locations of sign changes of the logmod of the second derivative
 	(switches=cumsum(rle(sign(logmod(y..1)))[[1]]))
 	#-- remove  nans
 	switches[which(switches==length(y..1))]=NA
@@ -81,7 +82,7 @@ out=try({
 	
 		#-- since y is evaluated at the midpoint of the xs get the midpoint...
 	if(length(switches)>0 & any(switches>best.youden)){
-		x.as=(xx..[switches]+xx..[switches+1])/2
+		x.as=(xx..1[switches]+xx..1[switches+1])/2
 		#### x.as=xout[switches]
 		x.as=x.as[which(x.as>x.youden)[1]] # this finds the midpoint, need to find the left interval
 		
@@ -106,7 +107,7 @@ out=try({
 	y1..r <- .deriv(xx1., y1.r)
 	y1...r <- .deriv(xx1.., y1..r)
 	y1....r <- .deriv(xx1..., y1...r)
-	y1.=approx(xx1.,y1.r,xout=xout)$y
+	y1.=suppressWarnings(approx(xx1.,y1.r,xout=xout)$y)
 	y1..=approx(xx1..,y1..r,xout=xout)$y
 	y1...=approx(xx1...,y1...r,xout=xout)$y
 	y1....=approx(.middle_pts(xx1...),y1....r,xout=xout)$y
@@ -121,12 +122,12 @@ out=try({
 	
 		#-- since y is evaluated at the midpoint of the xs get the midpoint...
 	#if(length(switches)>0 & any(switches>best.youden)){
-		x.lo.inv=min((xx1..[switches]+xx1..[switches+1])/2)
-		#### x.lo=max(xout[switches]) #- not sure this will generally work 
-		#x.lo=x.lo[which(x.lo<y.lo)[1]] # just hoping this is ok
-		
-		x.ind=findInterval(x.lo.inv,rev(xx1))
-		y.lo.inv=rev(y1)[x.ind]
+	x.lo.inv=min((xx1..[switches]+xx1..[switches+1])/2)
+	#### x.lo=max(xout[switches]) #- not sure this will generally work 
+	#x.lo=x.lo[which(x.lo<y.lo)[1]] # just hoping this is ok
+	
+	x.ind=findInterval(x.lo.inv,rev(xx1))
+	y.lo.inv=rev(y1)[x.ind]
 
 	#} else {
 	# 		#-- if no asymptote reached, use max sens
@@ -144,29 +145,25 @@ out=try({
 	x.lo=1-y.lo.inv
 	y.lo=1-x.lo.inv
 
-	a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth=TRUE),silent=T)
+	a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth=TRUE,quiet=T),silent=T)
+	if(is.na(a.pauc)) a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth.method='density',quiet=T),silent=T)
 	if(class(a.pauc)=='try-error') a.pauc=list(auc=NA)
-	#-- smoothing the auc, which was needed for derivativies, doesn't give you thresholds associated withe prediction so i ask for the data threshold associated with the smoothed curve
-	a.rough=pROC::roc(ins[,1], ins[,2])
+	
+	#== find thresholds 
+	#-- smoothing the auc, which was needed for derivativies, doesn't give you thresholds associated with the prediction (it just smooths the ROC curve, and there are no underlying threshold values associated with this smooth) so i ask for the data threshold associated with the smoothed curve. It can happen that when there are few points, the same threshold is associated with different hi, youden, low estimates that came from smoothing. This  means that all the maps are the same.
+	#-- cm: 9/3/21 i canned this approach and used the smoothed curves because in cases where there are big jumps between data points or AUC ~1, you don't get any differences in the estimated threoushold 
+	a.rough=pROC::roc(ins[,1], ins[,2],quiet=T)
 	threshLo=rev(a.rough$thresholds)[findInterval(x.lo, rev(1-a.rough$specificities))]
 	threshYouden=rev(a.rough$thresholds)[findInterval(x.youden, rev(1-a.rough$specificities))]
 	threshHi=rev(a.rough$thresholds)[findInterval(x.as, rev(1-a.rough$specificities))]
 	
-	#-- curvature of 2nd derivative
-	# #-- bailed since the curvature was not geometrically intuitive
-	# # 	c2=.curv2(y.,y..)
-	# # 	c2.1=.curv2(y..,y...)
-	# # 	c2.2=.curv2(y...,y....)
-	# # 	max.c=which.max(c2)
-	# # 	y.curv=c2[max.c]
-	# # 	x.curv=xout[max.c]
-	
+	#== prep outputs
 	out1=data.frame(lo.thresh.x=x.lo,           lo.thresh.y=y.lo, 			
 									youden.thresh.x=x.youden,   youden.thresh.y=y.youden,
 									hi.thresh.x=x.as,           hi.thresh.y=y.as,
 									y.lo.inv=y.lo.inv,          x.lo.inv=x.lo.inv,
 									trinary.pauc=as.numeric(a.pauc$auc))
-	plotThings=list(xx=xx,y=y,y.=y.,y..=y..,xx1=xx1,y1=y1,x1out=x1out,y1..=y1.., a.pauc=a.pauc,xout=xout,x1out=x1out,threshLo=threshLo,threshHi=threshHi,threshYouden=threshYouden)#,mapOutputDir=mapOutputDir)
+	plotThings=list(xx=xx,y=y,y.=y.,y..=y..,xx1=xx1,y1=y1,x1out=x1out,y1..=y1.., a.pauc=a.pauc,xout=xout,x1out=x1out,threshLo=threshLo,threshHi=threshHi,threshYouden=threshYouden)
 	
 	list(out1=out1,plotThings=plotThings)
 	
@@ -215,9 +212,7 @@ out=try({
 # !!!!!! shoulds split this into making the map and plotting it.
 
 # should add the option to use a map in memory
-trinaryMap=function(#dirs=NULL,
-										#stats=NULL,
-										model,
+trinaryMap=function(model,
 										threshLo,
 										threshHi,
 										threshYouden,
@@ -225,15 +220,6 @@ trinaryMap=function(#dirs=NULL,
 										species,
 										rasterOutputDir=NULL,
 										...
-										#rasterF=NULL,
-										#plotF=NULL,
-										#expertShp=NA,
-										#shapesToPlot=NULL,
-										#pres=NULL,
-										#openFig=TRUE,
-										#mapOutputDir=NULL,
-										#doPlot=TRUE,
-										#expertRaster.f=NULL
 										){
 										
 	out=try({	
@@ -266,15 +252,10 @@ trinaryMap=function(#dirs=NULL,
 	 #abline(v=log(threshLo)); abline(v=log(threshHi))
 	  
 		# just make this to get the range size
-	youden.binary.tmp.raster=preds.r>threshYouden
+  youden.binary.tmp.raster=preds.r>threshYouden
 											
-# 	range.size= data.frame( 
-# 				range.size.lo.km2=sum(values( trinary.rasters)>1,na.rm=T),
-# 	 			range.size.hi.km2=sum(values( trinary.rasters)>0,na.rm=T),
-# 	 			range.size.youden.km2=sum(values(youden.binary.tmp.raster)>0,na.rm=T) ) * prod(res(trinary.rasters))/1e6
- 
 	 #== write results
-	 if(!is.null(rasterOutputDir)){
+	if(!is.null(rasterOutputDir)){
 		 lapply(1:nlayers(trinary.rasters),function(x){
 			 if(is.null(rasterOutputDir)){
 			 	trinaryDirSp=paste0(dirs$trinaryDir,'/',species)
@@ -284,15 +265,12 @@ trinaryMap=function(#dirs=NULL,
 			 		trinaryModel=paste0(rasterOutputDir,'/',species,'_', names(trinary.rasters)[x] ,".tif")
 			 }
 			 
-			 rf <- writeRaster(trinary.rasters[[x]], 
-												 filename=trinaryModel, 
-												 ...)
+			 rf <- suppressWarnings(writeRaster(trinary.rasters[[x]], 
+												 filename=trinaryModel, ...))
 		 })
-	 } # end if is.null(rasterF) 	
-	 #== plot results
-	 # if(doPlot){	trinaryMapPlot(plotF=NULL,trinary.rasters,pres,expertRaster.f,expertShp=expertShp,shapesToPlot=shapesToPlot,openFig=T)
-	 # }		
-	 return(trinary.rasters)
+	  } # end if is.null(rasterF) 	
+
+	  return(trinary.rasters)
 	})
 	return(out)
 }
@@ -329,7 +307,7 @@ trinaryRangeSize=function(trinary.rasters,
                           youden.binary.tmp.raster=NULL){
   
   cell.size=prod(res(trinary.rasters)/1e3)
-	if(!is.null(youden.binary.tmp.raster)){ range.size.youden.km2=sum(values(youden.binary.tmp.raster)>0,na.rm=T) * prod(res(trinary.rasters))/1e6
+	if(!is.null(youden.binary.tmp.raster)){ range.size.youden.km2=sum(values(youden.binary.tmp.raster)>0,na.rm=T) 
 	} else {
 		range.size.youden.km2=NA
 	}
@@ -339,9 +317,6 @@ trinaryRangeSize=function(trinary.rasters,
 	 			range.size.hi.km2=sum(values( trinary.rasters)>0,na.rm=T),
 	 			range.size.youden.km2=range.size.youden.km2)
 
-	 			
-		#range.size= trinaryMap(dirs=dirs,modelPath=trinaryPlotArgs$modelPath, threshLo=threshLo, threshHi=threshHi,threshYouden=threshYouden, expertShp=trinaryPlotArgs$expertShp,shapesToPlot=trinaryPlotArgs$shapesToPlot,pres=trinaryPlotArgs$pres,raster.only=TRUE,expertRaster=trinaryPlotArgs$expertRaster)$range.size
-	
 	range.size
 }
 	

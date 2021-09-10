@@ -31,37 +31,25 @@
 trinaryMapPlot=function(trinary.rasters,
 												plotFile=NULL,
 												pres=NULL,
-												species,
-												expertShpPath=NULL,
-												expertRasterPath=NULL,
+												species,						
 												shapesToPlot=NULL,
 												openFig=T){
 
-	#for testing
-	# pres=NULL; expertRaster.f=NULL; expertShp=NULL; shapesToPlot=NULL
-	if(!is.null(plotFile)){
-		pdf(plotFile,h=7,w=7)
-	}
+	#  for testing
+	#  pres=NULL; shapesToPlot=NULL
+	if(!is.null(plotFile)) pdf(plotFile,h=7,w=7)
 
-		image(trinary.rasters, xlab='',ylab='',col=c('grey80','steelblue','red1'),xaxt='n', yaxt='n',bty='n',main=species)
-		if(!is.null(expertRasterPath)){
-			true=raster(expertRaster.f)
-			image(true,add=T,col=c(rgb(0,0,0,0),rgb(0,0,0,.5)))
-		}
+		
+		image(trinary.rasters>=0, xlab='',ylab='',col=c('grey80'),xaxt='n', yaxt='n',bty='n',main=species)
+		image(trinary.rasters>=1, xlab='',ylab='',col=c('steelblue'),xaxt='n', yaxt='n',bty='n',add=TRUE)
+		image(trinary.rasters>=2, xlab='',ylab='',col=c('red1'),xaxt='n', yaxt='n',bty='n',add=TRUE)
+		
 		if(!is.null(pres)) points(pres,col='grey90',pch='+',cex=.4)
-		if(!is.null(expertShpPath)) {
-			 tmp=rgdal::readOGR(paste0(expertShpPath,'.shp'),verbose=F)
-			 projection(tmp)=projection(trinary.rasters)
-			 plot(tmp,add=T,border="black",col=grey(.6,.3),lwd=.9)
-		}
-		if(!is.null(shapesToPlot)){
-			lapply(shapesToPlot,plot,add=T,lwd=.1,border='grey40')
-		}
 
-	if(!is.null(plotFile)){
-		dev.off()
-		if(openFig) system(paste0('open ',plotFile))
-	}
+		if(!is.null(shapesToPlot)) lapply(shapesToPlot,plot,add=T,lwd=.1,border='grey40')
+
+	if(!is.null(plotFile)) dev.off(); if(openFig) system(paste0('open ',plotFile))
+	
 }
 
 
@@ -101,6 +89,8 @@ trinaryROCPlot=function(ROCPlotFile=NULL,
 												out1,
 												openFig=T,
 												addMapPlot=FALSE){
+	#  for testing
+	#  plotThings=threshs$plotThings; out1=threshs[[1]]; openFig=T; 												addMapPlot=FALSE
 
 	if(!is.null(ROCPlotFile)) pdf(ROCPlotFile,h=1.6*7,w=7.6)
 		par(mfrow=c(3,2),mar=c(5,4,2,2))
@@ -120,25 +110,40 @@ trinaryROCPlot=function(ROCPlotFile=NULL,
 		text(out1$hi.thresh.x-.02,out1$hi.thresh.y+.03, paste0('(',round(out1$hi.thresh.x,2),',',round(out1$hi.thresh.y,2),')'),adj=c(1,0), cex=1,col='steelblue')
 		text(out1$lo.thresh.x+.02,out1$lo.thresh.y+.03, paste0('(',round(out1$lo.thresh.x,2),',',round(out1$lo.thresh.y,2),')'),adj=c(0,1), cex=1,col='red1')
 		
-		plot(plotThings$xout,plotThings$y.,type='l',col='black',log='y',main="ROC'", xlab='1-specificity',ylab="sensitivity'")
+		if(!any(is.finite(plotThings$y.))){
+			p1=plot(plotThings$xout,plotThings$y.,type='l',col='black',log='y', main="ROC'", xlab='1-specificity',ylab="sensitivity'")
+		} else {plot(.5,.5,col='white', main="ROC'", xlab='1-specificity',ylab="sensitivity'"); graphics::text(.5,.5,'Derivative contains Inf or NA')}
 		abline(h=0,lty=2)
 		abline(h=1,lty=2)
 		abline(v=out1$youden.thresh.x,col='darkgoldenrod2',lty=3,lwd=2)
 		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
 		abline(v=out1$lo.thresh.x,col='red1',lty=3,lwd=2)
 
-		plot(plotThings$xout,logmod(plotThings$y..),type='l',col='black', main="logmod(ROC'')", xlim=c(0,1),xlab='1-specificity',ylab="sensitivity' '")
+		if(!any(is.finite(plotThings$y..))){
+			plot(plotThings$xout,logmod(plotThings$y..),type='l',col='black', main="logmod(ROC'')", xlim=c(0,1),xlab='1-specificity',ylab="sensitivity")
+		} else {
+			plot(.5,.5,col='white', main="logmod(ROC'')", xlab='1-specificity',ylab="sensitivity'"); graphics::text(.5,.5,'Derivative contains Inf or NA')
+		}
 		abline(h=0,lty=2) 
 		abline(v=out1$youden.thresh.x,col='darkgoldenrod2',lty=3,lwd=2)
 		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
 		abline(v=out1$lo.thresh.x,col='red1',lty=3,lwd=2)
 		
-	 	plot(plotThings$xx1,plotThings$y1,type='l',lwd=4,ylim=c(0,1.08),main='Inverse ROC',xlab='1-sensitivity',ylab='specificity')
+		# inverse 
+		if(!any(is.finite(plotThings$y1))){
+	 		plot(plotThings$xx1,plotThings$y1,type='l',lwd=4,ylim=c(0,1.08), main='Inverse ROC',xlab='1-sensitivity',ylab='specificity')
+	 	} else {
+	 		plot(.5,.5,col='white', main="Inverse ROC", xlab='1-sensitivity',ylab='specificity'); graphics::text(.5,.5,'Derivative contains Inf or NA')
+	 	}
 		abline(h=out1$y.lo.inv,col='red1',lty=3,lwd=2)
 		abline(v=out1$x.lo.inv,col='red1',lty=3,lwd=2)
 		abline(0,1,lty=2)
 		
-		plot(plotThings$x1out,logmod(plotThings$y1..),type='l',main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity' ')",xlim=c(0,1),ylim=range(logmod(plotThings$y1..),na.rm=T))
+		if(!any(is.finite(plotThings$y1..))){
+			plot(plotThings$x1out,logmod(plotThings$y1..),type='l', main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity' ')",xlim=c(0,1),ylim=range(logmod(plotThings$y1..),na.rm=T))
+		} else {
+		plot(.5,.5,col='white', main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity' ')"); graphics::text(.5,.5,'Derivative contains Inf or NA')
+		}
 		#abline(h=y.lo)
 		abline(h=0,lty=2)
 		abline(v=out1$x.lo.inv,col='red1',lty=3,lwd=2)

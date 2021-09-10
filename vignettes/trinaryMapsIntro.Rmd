@@ -1,0 +1,46 @@
+---
+title: "Trinary Maps Vignette"
+author: "Cory"
+date: "8/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Background
+Continuous model predictions are compared against binary data for evaluation in a variety of application; I'm thinking about Species Distribution Models (SDMs) but the following could be probably be used for any application. To evaluate the continuous predictions of the model - in the SDM case the 'suitability' scores - one must choose a threshold value of suitability above which the model predicts a species presence and below which the model predicts absence. Coming up with a reasonable threshold is difficult for SDMs, particularly when presence-backround data are invovled. Use of the AUC statistic is meant to avoid the issues of choosing a particular threshold and evaluate model performance over all possible thresholds. Even still, in SDM applications, there is still often a need for generating a binary map from continuous predictions, which means picking a threshold. 
+
+The specific problem of choosing a threshold when using presence-background data for SDMs is that the background is 'contaminated'  - it contains (unknown) presences that biases binary classification statistics. One common threshold choice is based on maximizing the sum of sensitiity and specificity (i.e., the Youden threshold), but this penalizes a model for incorrectly predicting background points as presence locations, when in fact they may be presences. I don't know how to solve this problem, but the contribution here is to put some useful bounds on what reasonable values of the threshold might be. If we can't determine an optimal threshold, we can at least identify upper and lower limits so we know we have it surrounded.
+
+The approach to identifying these limits is heuristic and not based on any formal theory; rather it is based on analysing the ROC curve and identifying limits beyond which model predictions aren't likely to be very useful in the application of SDMs. For example, why would any care about the discrimination of an SDM based on a threshold that gets only 7% of presences correct? This implies there should be a upper limit on a useful threshold (higher threshold implies fewer predicted presences). Similarly, why would anyone want a model that predicts that only 4% of the background is an absence? If your model were that nondiscriminating, why even build a model when you could just use the modeling domain as a range esimate? So this suggests there is a useful lower limit (lower threshold implies more predicted presences). How can we objectively find these upper and lower limits? Answering that is the contribution of trinaryMaps.
+
+# Using Trinary Maps
+Building trinary maps involves the same inputs as one would use for binary classification and in this package is specifically structured for use with SDMs:
+1. 
+2.
+3.
+
+A single call will get you the full set of outputs, if you don't need to customize settings. This will:
+1. Calculate upper and lower threshold bounds
+2. Make binary maps based on these bounds
+3. Calculate range sizes associated with (2)
+4. Plot (2)
+5. Plot the ROC curve and (1)
+
+```{r}
+# presence, background and model for demos are included with the packs
+pres=
+bg=
+model=
+trinaryMapWorkflow(pres=pres, background=bg,model=model,
+                   modelNames=modelNames,species=species,
+                   rasterOutputDir=rasterOutputDir,
+                   mapPlotDir=mapPlotDir, 
+                   shapesToPlot=shapesToPlot,openFig=openFig,
+                   ROCPlotDir=ROCPlotDir, 
+                   doMapPlot=doMapPlot,doROCPlot=doROCPlot)
+```
+
+There are also functions that allow you to interact with each of the 5 steps above rather than calling them all at once, in case customization is needed.
