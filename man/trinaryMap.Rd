@@ -4,8 +4,16 @@
 \alias{trinaryMap}
 \title{Make trinary maps}
 \usage{
-trinaryMap(model, threshLo, threshHi, threshYouden, modelNames, species,
-  rasterOutputDir = NULL, ...)
+trinaryMap(
+  model,
+  threshLo,
+  threshHi,
+  threshYouden,
+  modelNames,
+  species,
+  rasterOutputDir = NULL,
+  ...
+)
 }
 \value{
 a data.frame

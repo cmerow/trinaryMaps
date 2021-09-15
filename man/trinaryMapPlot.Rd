@@ -4,9 +4,14 @@
 \alias{trinaryMapPlot}
 \title{Make Trinary maps from previous workflow runs}
 \usage{
-trinaryMapPlot(trinary.rasters, plotFile = NULL, pres = NULL, species,
-  expertShpPath = NULL, expertRasterPath = NULL, shapesToPlot = NULL,
-  openFig = T)
+trinaryMapPlot(
+  trinary.rasters,
+  plotFile = NULL,
+  pres = NULL,
+  species,
+  shapesToPlot = NULL,
+  openFig = T
+)
 }
 \value{
 a data.frame

@@ -4,8 +4,13 @@
 \alias{trinaryROCPlot}
 \title{Make Trinary maps from previous workflow runs}
 \usage{
-trinaryROCPlot(ROCPlotFile = NULL, plotThings, out1, openFig = T,
-  addMapPlot = FALSE)
+trinaryROCPlot(
+  ROCPlotFile = NULL,
+  plotThings,
+  out1,
+  openFig = T,
+  addMapPlot = FALSE
+)
 }
 \value{
 a data.frame

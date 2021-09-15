@@ -4,10 +4,19 @@
 \alias{trinaryMapWorkflow}
 \title{Apply trinary map tools to a set of continuous range maps}
 \usage{
-trinaryMapWorkflow(pres, background, model, modelNames, species,
-  rasterOutputDir = NULL, mapPlotDir = NULL, ROCPlotDir = NULL,
-  expertShpPath = NULL, expertRasterPath = NULL, shapesToPlot = NULL,
-  openFig = T, doMapPlot = TRUE, doROCPlot = TRUE)
+trinaryMapWorkflow(
+  pres,
+  background,
+  model,
+  modelNames,
+  species,
+  rasterOutputDir = NULL,
+  mapPlotDir = NULL,
+  ROCPlotDir = NULL,
+  shapesToPlot = NULL,
+  openFig = T,
+  NATo0 = TRUE
+)
 }
 \arguments{
 \item{expertRaster.f=NULL}{}
@@ -20,6 +29,9 @@ Run all aspects of modeling and plotting for a suite of previously run models
 }
 \details{
 See Examples.
+}
+\note{
+This is a convenience wrapper around each component of trinary map building.
 }
 \author{
 Cory Merow <cory.merow@gmail.com>

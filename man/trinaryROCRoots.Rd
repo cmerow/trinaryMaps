@@ -4,7 +4,7 @@
 \alias{trinaryROCRoots}
 \title{Find upper/lower thresholds from ROC curves}
 \usage{
-trinaryROCRoots(ins, max.sens = 0.95)
+trinaryROCRoots(ins, max.sens = 0.95, smoothMethod = "binormal", ...)
 }
 \arguments{
 \item{max.sens=0.95}{}
