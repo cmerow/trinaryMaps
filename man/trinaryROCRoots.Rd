@@ -7,7 +7,11 @@
 trinaryROCRoots(ins, max.sens = 0.95, smoothMethod = "binormal", ...)
 }
 \arguments{
-\item{max.sens=0.95}{}
+\item{max.sens}{default is 0.95}
+
+\item{smoothMethod}{default is 'binormal'}
+
+\item{...}{options to be passed to `pROC::smooth`}
 }
 \value{
 a data.frame

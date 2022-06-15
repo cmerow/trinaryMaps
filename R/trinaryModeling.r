@@ -9,13 +9,9 @@
 #' See Examples.
 #'
 #' @param ins
-# @param plot.f
-#' @param max.sens=0.95
-# @param doPlot=FALSE
-# @param trinaryPlotArgs
-# @param openFig=FALSE
-# @param mapOutputDir=NULL
-# @param ... options to be passed to `pROC::smooth`
+#' @param max.sens default is 0.95
+#' @param smoothMethod default is 'binormal'
+#' @param ... options to be passed to `pROC::smooth`
 # @keywords
 #'
 # @examples
@@ -39,10 +35,10 @@ trinaryROCRoots=function(ins,
 out=try({
 	
 	aa=pROC::roc(ins[,1], ins[,2],quiet=T)
-	a=try(pROC::smooth(aa,method=smoothMethod, n=1024,...),silent=TRUE)
+	a=try(pROC::smooth(aa,method=smoothMethod, n=1024))#,...),silent=TRUE)
 	# i used this default because its the pROC package defualt so i assumed it was the best. if it breaks, try the next one
 	if(class(a)=='try-error') { 
-		a=pROC::smooth(aa,method='density',...)
+		a=pROC::smooth(aa,method='density')#,...)
 		message("Used method=density for ROC smoothing because your selected method (set by argument smoothMethod) broke. If you're unhappy about this, see other options for methods in ?pROC::smooth." )
 	}
 	xx=rev(1-a$specificities)
@@ -78,7 +74,7 @@ out=try({
 	(switches=cumsum(rle(sign(logmod(y..1)))[[1]]))
 	#-- remove  nans
 	switches[which(switches==length(y..1))]=NA
-	switches=na.omit(switches)
+	switches=stats::na.omit(switches)
 	
 		#-- since y is evaluated at the midpoint of the xs get the midpoint...
 	if(length(switches)>0 & any(switches>best.youden)){
@@ -98,17 +94,24 @@ out=try({
 
 	#== prep for COR (inverse ROC) to find asymptote
 	y1=1-xx
-	xx1=1-y
+	xx1=1-y # plot(xx,y,type='l'); plot(xx1,y1,type='l')
 	xx1.=.middle_pts(xx1)
 	xx1..=.middle_pts(.middle_pts(xx1))
 	xx1...=.middle_pts(.middle_pts(.middle_pts(xx1)))
 	x1out=seq(0,1,length=200)
-	y1.r= .deriv(xx1, y1)
-	y1..r <- .deriv(xx1., y1.r)
-	y1...r <- .deriv(xx1.., y1..r)
+	y1.r= .deriv(xx1, y1) # plot(xx1.,y1.r,type='l')
+	y1..r <- .deriv(xx1., y1.r)# plot(xx1..,y1..r,type='l')
+		# need to turn NaNs in the middle (leading and trailing don't hurt) into +/- Infs so that approx() can proceed below. I'm going to replace NaNs with the last value that wasn't NaN before them, since this it just an issue due to numerical overflow, and the NaN conceptually can just be +/-Inf. choosing the last value before the NaNs started ensures that no extra switches will be introduced. also doesn't like Infs, so replacing them with the largest/smallest numbers
+	y1..r=ifelse(is.nan(y1..r),stats::lag(y1..r,1),y1..r)
+	while(any(is.nan(y1..r))){ y1..r=ifelse(is.nan(y1..r),lag(y1..r,1),y1..r) }
+	y1..r[y1..r==-Inf]=.Machine$double.xmin
+	y1..r[y1..r==Inf]=.Machine$double.xmax
+	# 	check result
+	# data.frame(y1..r,,b=ifelse(is.nan(y1..r),lag(y1..r,1),y1..r),a)
+	y1...r <- .deriv(xx1.., y1..r) # plot(xx1...,y1...r,type='l')
 	y1....r <- .deriv(xx1..., y1...r)
-	y1.=suppressWarnings(approx(xx1.,y1.r,xout=xout)$y)
-	y1..=approx(xx1..,y1..r,xout=xout)$y
+	y1.=suppressWarnings(approx(xx1.,y1.r,xout=xout)$y) # plot(y1.,type='l')
+	y1..=approx(xx1..,y1..r,xout=xout)$y # plot(y1..,type='l'); plot(xx1..,y1..r,type='l')
 	y1...=approx(xx1...,y1...r,xout=xout)$y
 	y1....=approx(.middle_pts(xx1...),y1....r,xout=xout)$y
 	####keep=complete.cases(y1..)
@@ -118,7 +121,7 @@ out=try({
 	(switches=cumsum(rle(sign(logmod(y1..1)))[[1]]))
 	#-- remove  nans
 	switches[which(switches==length(y1..1))]=NA
-	switches=na.omit(switches)
+	switches=stats::na.omit(switches)
 	
 		#-- since y is evaluated at the midpoint of the xs get the midpoint...
 	#if(length(switches)>0 & any(switches>best.youden)){
@@ -146,7 +149,8 @@ out=try({
 	y.lo=1-x.lo.inv
 
 	a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth=TRUE,quiet=T),silent=T)
-	if(is.na(a.pauc)) a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth.method='density',quiet=T),silent=T)
+	# try different smooth method if it breaks
+	if(is.na(a.pauc$auc)) a.pauc=try(pROC::roc(ins[,1], ins[,2],auc=T,partial.auc=1-c(x.lo,x.as), partial.auc.focus='specificity', partial.auc.correct=T,smooth.method='density',quiet=T),silent=T)
 	if(class(a.pauc)=='try-error') a.pauc=list(auc=NA)
 	
 	#== find thresholds 
@@ -237,7 +241,7 @@ trinaryMap=function(model,
 	# 	 }
 	preds.r=model 
 	#== make trinary maps
-	trinary.rasters=stack(lapply(1:nlayers(preds.r),
+	trinary.rasters=raster::stack(lapply(1:nlayers(preds.r),
 												function(x) { 
 													#stack(lapply(1:ncol(thresh[x,]),
 													 #function(y) {
@@ -256,7 +260,7 @@ trinaryMap=function(model,
 											
 	 #== write results
 	if(!is.null(rasterOutputDir)){
-		 lapply(1:nlayers(trinary.rasters),function(x){
+		 lapply(1:raster::nlayers(trinary.rasters),function(x){
 			 if(is.null(rasterOutputDir)){
 			 	trinaryDirSp=paste0(dirs$trinaryDir,'/',species)
 			 	if(!file.exists(trinaryDirSp)) dir.create(trinaryDirSp)
@@ -265,7 +269,7 @@ trinaryMap=function(model,
 			 		trinaryModel=paste0(rasterOutputDir,'/',species,'_', names(trinary.rasters)[x] ,".tif")
 			 }
 			 
-			 rf <- suppressWarnings(writeRaster(trinary.rasters[[x]], 
+			 rf <- suppressWarnings(raster::writeRaster(trinary.rasters[[x]], 
 												 filename=trinaryModel, ...))
 		 })
 	  } # end if is.null(rasterF) 	
@@ -306,15 +310,15 @@ trinaryMap=function(model,
 trinaryRangeSize=function(trinary.rasters,
                           youden.binary.tmp.raster=NULL){
   
-  cell.size=prod(res(trinary.rasters)/1e3)
+  cell.size=prod(raster::res(trinary.rasters)/1e3)
 	if(!is.null(youden.binary.tmp.raster)){ range.size.youden.km2=sum(values(youden.binary.tmp.raster)>0,na.rm=T) 
 	} else {
 		range.size.youden.km2=NA
 	}
 	
 	range.size= cell.size * data.frame( 
-				range.size.lo.km2=sum(values( trinary.rasters)>1,na.rm=T),
-	 			range.size.hi.km2=sum(values( trinary.rasters)>0,na.rm=T),
+				range.size.lo.km2=sum(raster::values( trinary.rasters)>1,na.rm=T),
+	 			range.size.hi.km2=sum(raster::values( trinary.rasters)>0,na.rm=T),
 	 			range.size.youden.km2=range.size.youden.km2)
 
 	range.size

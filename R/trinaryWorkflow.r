@@ -55,8 +55,8 @@ trinaryMapWorkflow=function(pres,
 		a[is.na(a)]=0
 		p[is.na(p)]=0
 	}
-	p <- na.omit(p)
-	a <- na.omit(a)
+	p <- stats::na.omit(p)
+	a <- stats::na.omit(a)
 	message(paste0(species,': ',length(p),' presences and ',length(a),' background points used for building trinary maps'))
 	ins=rbind(data.frame(Y=1,X=p),data.frame(Y=0,X=a))
 
@@ -84,7 +84,7 @@ trinaryMapWorkflow=function(pres,
 	# plot
 	plotFile=paste0(mapPlotDir,modelNames,'.pdf')
 	
-	if(!is.null(mapPlotDir)) trinaryMapPlot(trinary.rasters=trinary.rasters,plotFile=plotFile,pres=pres, species=species, shapesToPlot=shapesToPlot,openFig=openFig)
+	if(!is.null(mapPlotDir)) trinaryMapPlot(trinary.rasters=trinary.rasters,plotFile=plotFile, pres=pres, species=species, shapesToPlot=shapesToPlot,openFig=openFig)
 	
 	ROCPlotFile=paste0(ROCPlotDir,species,'_',modelNames,'ROC.pdf')
 	if(!is.null(ROCPlotDir)) trinaryROCPlot(ROCPlotFile,plotThings=threshs$plotThings,out1=threshs[[1]],openFig=openFig)
