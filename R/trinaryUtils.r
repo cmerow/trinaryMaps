@@ -2,32 +2,20 @@
 #################################################################
 #################################################################
 #################################################################
-#' @title Make Trinary maps from previous workflow runs
+#' Take the logarithm of the absolute value of a number with its sign
 #'
-#' @description Read in workflow info, make trinary maps and plot vs thresholds
+#' This function takes a numerical input \code{x}, computes the logarithm of its
+#' absolute value and multiplies it by the sign of \code{x}. This ensures that the
+#' result has the same sign as the input \code{x}.
 #'
-#' @details
-#' See Examples.
+#' @param x A numerical input.
 #'
-# #' @param mod.out
-# #' @param stats
-# #' @param proj.env
-# #' @param name
-# @keywords
+#' @return The result of taking the logarithm of the absolute value of \code{x}
+#' with its sign.
 #'
-# @examples
-#'
-#'
-#' @return a data.frame
-#' @author Cory Merow <cory.merow@@gmail.com>
-# @note
-# @seealso
-# @references
-# @aliases - a list of additional topic names that will be mapped to
-# this documentation when the user looks them up from the command
-# line.
-# @family - a family name. All functions that have the same family tag will be linked in the documentation.
-
+#' @examples
+#' logmod(10)
+#' logmod(-5)
 #' @export
 logmod=function(x){sign(x)*log(abs(x))}
 

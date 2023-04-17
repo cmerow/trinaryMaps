@@ -1,52 +1,56 @@
 #################################################################
 #################################################################
 #################################################################
-#' @title Make Trinary maps from previous workflow runs
+#' Plot trinary map raster
 #'
-#' @description Read in workflow info, make trinary maps and plot vs thresholds
+#' This function plots the trinary map raster for a given species. The raster will have three colors: grey for the area with no prediction, blue for the predicted presence area, and red for the predicted absence area. Additionally, if the \code{pres} argument is provided, the function will overlay presence data in grey crosses on the plot. If the \code{shapesToPlot} argument is provided, the function will overlay the specified shapefiles on the plot. If a \code{plotFile} is provided, the plot will be saved to that file. If \code{openFig} is TRUE, the plot will also be opened in the system's default PDF viewer.
 #'
-#' @details
-#' See Examples.
+#' @param trinaryRaster Trinary map raster created by \code{\link{trinaryMapWorkflow}}.
+#' @param plotFile File to save plot. If NULL, plot is not saved.
+#' @param pres Presence data to overlay on plot. If NULL, presence data is not included.
+#' @param main Title for plot. Default is NULL.
+#' @param shapesToPlot List of shapefiles to overlay on plot. Default is NULL.
+#' @param openFig Logical indicating whether to open plot in system's default PDF viewer. Default is TRUE.
 #'
-# #' @param mod.out
-# #' @param stats
-# #' @param proj.env
-# #' @param name
-# @keywords
+#' @return None
 #'
-# @examples
-#'
-#'
-#' @return a data.frame
-#' @author Cory Merow <cory.merow@@gmail.com>
-# @note
-# @seealso
-# @references
-# @aliases - a list of additional topic names that will be mapped to
-# this documentation when the user looks them up from the command
-# line.
-# @family - a family name. All functions that have the same family tag will be linked in the documentation.
-#' @export
+#' @examples
+#' \dontrun{
+#' # plot trinary map for species 1
+#' trinaryMapPlot(trinaryRaster = trinaryMapSDMPW1$trinaryMap,
+#' pres = species1Presences,
+#' shapesToPlot = list(world.shp),
+#' plotFile = "trinary_map_species1.pdf",
+#' openFig = TRUE)
+#' }
 
-trinaryMapPlot=function(trinary.rasters,
+trinaryMapPlot=function(trinaryRaster,
 												plotFile=NULL,
 												pres=NULL,
-												species,						
+												main=NULL,					
 												shapesToPlot=NULL,
-												openFig=T){
+												openFig=TRUE){
 
 	#  for testing
-	#  pres=NULL; shapesToPlot=NULL
+	#  
 	if(!is.null(plotFile))  grDevices::pdf(plotFile,h=7,w=7)
 
-		
-		image(trinary.rasters>=0, xlab='',ylab='',col=c('grey80'),xaxt='n', yaxt='n',bty='n',main=species)
-		image(trinary.rasters>=1, xlab='',ylab='',col=c('steelblue'),xaxt='n', yaxt='n',bty='n',add=TRUE)
-		image(trinary.rasters>=2, xlab='',ylab='',col=c('red1'),xaxt='n', yaxt='n',bty='n',add=TRUE)
-		
+	if(!is.null(pres)){
+		if(is.na(projection(pres))) {
+			projection(pres)=projection(trinaryRaster)
+			message('The projection for your presences was not specified, so assuming its the same as your rasters')
+		}
+	}
+	if(!is.null(plotFile))  grDevices::pdf(plotFile,h=7,w=7)
+
+		raster::image(trinaryRaster==0, xlab='',ylab='',col=c(grey(1,0),'grey80'),xaxt='n', yaxt='n',bty='n',main=main)
+		raster::image(trinaryRaster==1, xlab='',ylab='',col=c(grey(1,0),'steelblue'),xaxt='n', yaxt='n',bty='n',add=TRUE)
+		raster::image(trinaryRaster>=2, xlab='',ylab='',col=c(grey(1,0),'red1'),xaxt='n', yaxt='n',bty='n',add=TRUE)
+
+
 		if(!is.null(pres)) graphics::points(pres,col='grey90',pch='+',cex=.4)
 
-		if(!is.null(shapesToPlot)) lapply(shapesToPlot,plot,add=T,lwd=.1,border='grey40')
+		if(!is.null(shapesToPlot)) lapply(shapesToPlot,sp::plot,add=T,lwd=.1,border='grey40')
 
 	if(!is.null(plotFile))  grDevices::dev.off(); if(openFig) system(paste0('open ',plotFile))
 	
@@ -56,136 +60,151 @@ trinaryMapPlot=function(trinary.rasters,
 #################################################################
 #################################################################
 #################################################################
-#' @title Make Trinary maps from previous workflow runs
+#' Plot trinary ROC curve and save the output as pdf file.
 #'
-#' @description Read in workflow info, make trinary maps and plot vs thresholds
-#'
-#' @details
-#' See Examples.
-#'
-# #' @param mod.out
-# #' @param stats
-# #' @param proj.env
-# #' @param name
-# @keywords
-#'
-# @examples
-#'
-#'
-#' @return a data.frame
-#' @author Cory Merow <cory.merow@@gmail.com>
-# @note
-# @seealso
-# @references
-# @aliases - a list of additional topic names that will be mapped to
-# this documentation when the user looks them up from the command
-# line.
-# @family - a family name. All functions that have the same family tag will be linked in the documentation.
+#' @param trinaryPlotThings Object of trinary ROC curve, contains xx, y, xout, and y. as its attributes.
+#' @param trinaryDF Data frame with trinary ROC curve information, including youden.thresh.roc.x, hi.thresh.roc.x, lo.thresh.roc.x, and trinary.pauc.
+#' @param plotFile Path to save the output as pdf file. If NULL, the plot will not be saved.
+#' @param openFig Logical, if TRUE, the plot will be shown in a new window.
+#' @return None
 
 #' @export
 
-trinaryROCPlot=function(ROCPlotFile=NULL,
-												plotThings,
-												out1,
-												openFig=T,
-												addMapPlot=FALSE){
+trinaryROCPlot=function(trinaryPlotThings,
+												trinaryDF,
+												plotFile=NULL,
+												openFig=TRUE
+												#addMapPlot=FALSE
+												){
 	#  for testing
-	#  plotThings=threshs$plotThings; out1=threshs[[1]]; openFig=T; 												addMapPlot=FALSE
+	#  trinaryPlotThings=threshs$trinaryPlotThings; trinaryDF=threshs[[1]]; openFig=T; 												addMapPlot=FALSE
 
-	if(!is.null(ROCPlotFile))  grDevices::pdf(ROCPlotFile,h=1.6*7,w=7.6)
+	if(!is.null(plotFile))  grDevices::pdf(plotFile,h=1.6*7,w=7.6)
 		par(mfrow=c(3,2),mar=c(5,4,2,2))
-		plot(plotThings$xx,plotThings$y,type='l',lwd=4,ylim=c(0,1.08), main="ROC",xlab='1-specificity', ylab="sensitivity")
+		plot(trinaryPlotThings$xx,trinaryPlotThings$y,type='l',lwd=4,ylim=c(0,1.08), main="ROC",xlab='1-specificity', ylab="sensitivity",xlim=c(-.08,1))
 		#abline(h=0,lty=2)
-		abline(v=out1$youden.thresh.x,col='darkgoldenrod2',lty=3,lwd=2)
-		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
-		abline(v=out1$lo.thresh.x,col='red1',lty=3,lwd=2)
+		abline(v=trinaryDF$youden.thresh.roc.x,col='darkgoldenrod2',lty=3,lwd=2)
+		abline(v=trinaryDF$hi.thresh.roc.x,col='steelblue',lty=3,lwd=2)
+		abline(v=trinaryDF$lo.thresh.roc.x,col='red1',lty=3,lwd=2)
 
 		abline(0,1,lty=2)
-		#points(out1$lo.thresh.x,y.lo,pch=21,bg='red1')
-		points(out1$youden.thresh.x,out1$youden.thresh.y,pch=21, bg='darkgoldenrod2')
-		points(out1$hi.thresh.x,out1$hi.thresh.y,pch=21,bg='steelblue')
-		points(out1$lo.thresh.x,out1$lo.thresh.y,pch=21,bg='red1')
-		text(.8,.2,paste0('pAUC =\n',round(plotThings$a.pauc$auc,3)),cex=1.5)
-		text(out1$youden.thresh.x+.02,out1$youden.thresh.y-.02, paste0('(',round(out1$youden.thresh.x,2),',', round(out1$youden.thresh.y,2),')'), adj=c(0,0), cex=1,col='darkgoldenrod2') 
-		text(out1$hi.thresh.x-.02,out1$hi.thresh.y+.03, paste0('(',round(out1$hi.thresh.x,2),',',round(out1$hi.thresh.y,2),')'),adj=c(1,0), cex=1,col='steelblue')
-		text(out1$lo.thresh.x+.02,out1$lo.thresh.y+.03, paste0('(',round(out1$lo.thresh.x,2),',',round(out1$lo.thresh.y,2),')'),adj=c(0,1), cex=1,col='red1')
+		#points(trinaryDF$lo.thresh.roc.x,y.lo,pch=21,bg='red1')
+		points(trinaryDF$youden.thresh.roc.x,trinaryDF$youden.thresh.roc.y,pch=21, bg='darkgoldenrod2')
+		points(trinaryDF$hi.thresh.roc.x,trinaryDF$hi.thresh.roc.y,pch=21, bg='steelblue')
+		points(trinaryDF$lo.thresh.roc.x,trinaryDF$lo.thresh.roc.y,pch=21,bg='red1')
+		text(.8,.2,paste0('pAUC =\n',round(trinaryDF$trinary.pauc,3)),cex=1.5)
+		text(trinaryDF$youden.thresh.roc.x+.02,trinaryDF$youden.thresh.roc.y-.06, paste0('(',round(trinaryDF$youden.thresh.roc.x,2),',', round(trinaryDF$youden.thresh.roc.y,2),')'), adj=c(0,0), cex=1,col='darkgoldenrod2') 
+		text(trinaryDF$hi.thresh.roc.x+.02,trinaryDF$hi.thresh.roc.y+.04, paste0('(',round(trinaryDF$hi.thresh.roc.x,2),',',round(trinaryDF$hi.thresh.roc.y,2),')'),adj=c(0,0), cex=1,col='steelblue')
+		text(trinaryDF$lo.thresh.roc.x+.02,trinaryDF$lo.thresh.roc.y-.06, paste0('(',round(trinaryDF$lo.thresh.roc.x,2),',',round(trinaryDF$lo.thresh.roc.y,2),')'),adj=c(0,1), cex=1,col='red1')
 		
 		# ROC' -----------------------------------------
-		if(!any(is.finite(plotThings$y.))){ #this catches NAs to
-			keep=which(!is.na(plotThings$y.))
-			x.tmp=plotThings$xout[keep]; y.tmp=plotThings$y.[keep]
-		} 
-		p1=plot(x.tmp,y.tmp,type='l',col='black',log='y', main="ROC'", xlab='1-specificity',ylab="sensitivity''",xlim=c(0,1))
-		#else {plot(.5,.5,col='white', main="ROC'", xlab='1-specificity',ylab="sensitivity'"); graphics::text(.5,.5,'Derivative contains Inf or NA')}
-		abline(h=0,lty=2)
-		abline(h=1,lty=2)
-		abline(v=out1$youden.thresh.x,col='darkgoldenrod2',lty=3,lwd=2)
-		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
-		abline(v=out1$lo.thresh.x,col='red1',lty=3,lwd=2)
-
+		if(is.null(trinaryPlotThings$y.)) {
+				plot(.5,.5,col='white', main="ROC'", xlab='1-specificity',ylab="sensitivity'");
+				graphics::text(.5,.5,'Derivatives were not used for this model.\n 0% and 30% training presence quantiles\n were used instead')
+		} else {
+			if(any(is.na(trinaryPlotThings$y.))){ #this catches NAs 
+				keep=which(!is.na(trinaryPlotThings$y.))
+				x.tmp=trinaryPlotThings$xout[keep]; y.tmp=trinaryPlotThings$y.[keep]
+			} else { x.tmp=trinaryPlotThings$xout; y.tmp=trinaryPlotThings$y. }
+				# catch infs; don't need this for second derivs, because those become NA
+			keep=which(is.finite(y.tmp))
+			y.tmp=y.tmp[keep]; x.tmp=x.tmp[keep]
+			if(any(is.infinite(y.tmp))){
+				plot(.5,.5,col='white', main="ROC'", xlab='1-specificity',ylab="sensitivity'"); graphics::text(.5,.5,'Derivative contains Inf')
+			} else {
+					p1=plot(x.tmp,y.tmp,type='l',col='black',log='y', main="ROC'", xlab='1-specificity',ylab="sensitivity''",xlim=c(0,1))
+			}
+	
+			abline(h=0,lty=2)
+			abline(h=1,lty=2)
+			abline(v=trinaryDF$youden.thresh.roc.x,col='darkgoldenrod2',lty=3,lwd=2)
+			abline(v=trinaryDF$hi.thresh.roc.x,col='steelblue',lty=3,lwd=2)
+			abline(v=trinaryDF$lo.thresh.roc.x,col='red1',lty=3,lwd=2)
+		}
+		
 		# ROC'' -----------------------------------------
-		if(!any(is.finite(plotThings$y..))){
-			keep=which(!is.na(plotThings$y..))
-			x.tmp=plotThings$xout[keep]; y.tmp=plotThings$y..[keep]
-		} 
-		plot(x.tmp,logmod(y.tmp),type='l',col='black', main="logmod(ROC'')", xlim=c(0,1),xlab='1-specificity',ylab="sensitivity")
-		#else {
-		#	plot(.5,.5,col='white', main="logmod(ROC'')", xlab='1-specificity',ylab="sensitivity'"); graphics::text(.5,.5,'Derivative contains Inf or NA')
-		#}
-		abline(h=0,lty=2) 
-		abline(v=out1$youden.thresh.x,col='darkgoldenrod2',lty=3,lwd=2)
-		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
-		abline(v=out1$lo.thresh.x,col='red1',lty=3,lwd=2)
+		if(is.null(trinaryPlotThings$y..)) {
+				plot(.5,.5,col='white', main="logmod(ROC'')", xlab='1-specificity',ylab="sensitivity'");
+				graphics::text(.5,.5,'Derivatives were not used for this model.\n 0% and 30% training presence quantiles\n were used instead')
+		} else {
+			if(any(is.na(trinaryPlotThings$y..))){
+				keep=which(!is.na(trinaryPlotThings$y..))
+				x.tmp=trinaryPlotThings$xout[keep]; y.tmp=trinaryPlotThings$y..[keep]
+			} else {x.tmp=trinaryPlotThings$xout; y.tmp=trinaryPlotThings$y..}
+			if(any(is.infinite(y.tmp)) | all(y.tmp==0)){
+				plot(.5,.5,col='white', main="logmod(ROC'')", xlab='1-specificity',ylab="logmod(sensitivity'')"); graphics::text(.5,.5,'Derivative contains Inf')
+			} else {
+				plot(x.tmp,logmod(y.tmp),type='l',col='black', main="logmod(ROC'')", xlim=c(0,1),xlab='1-specificity',ylab="logmod(sensitivity'')")
+			}
+
+			abline(h=0,lty=2) 
+			abline(v=trinaryDF$youden.thresh.roc.x,col='darkgoldenrod2',lty=3,lwd=2)
+			abline(v=trinaryDF$hi.thresh.roc.x,col='steelblue',lty=3,lwd=2)
+			abline(v=trinaryDF$lo.thresh.roc.x,col='red1',lty=3,lwd=2)
+		}
 		
 		# inverse ROC -----------------------------------
-		if(!any(is.finite(plotThings$y1))){
-	 		keep=which(!is.na(plotThings$y1))
-			x.tmp=plotThings$xx1[keep]; y.tmp=plotThings$y1[keep]
-	 	} 
-	 	plot(x.tmp,y.tmp,type='l',lwd=4,ylim=c(0,1.08), main='Inverse ROC',xlab='1-sensitivity',ylab='specificity')
-		# 	 	else {
-		# 	 		plot(.5,.5,col='white', main="Inverse ROC", xlab='1-sensitivity',ylab='specificity'); graphics::text(.5,.5,'Derivative contains Inf or NA')
-		# 	 	}
-		abline(h=out1$y.lo.inv,col='red1',lty=3,lwd=2)
-		abline(v=out1$x.lo.inv,col='red1',lty=3,lwd=2)
-		abline(0,1,lty=2)
+		if(is.null(trinaryPlotThings$y1)) {
+				plot(.5,.5,col='white', main="Inverse ROC'", xlab='1-sensitivity',ylab='specificity');
+				graphics::text(.5,.5,'Derivatives were not used for this model.\n 0% and 30% training presence quantiles\n were used instead')
+		} else {
+			if(any(is.na(trinaryPlotThings$y1))){
+				keep=which(!is.na(trinaryPlotThings$y1))
+				x.tmp=trinaryPlotThings$xx1[keep]; y.tmp=trinaryPlotThings$y1[keep]
+			} else {x.tmp=trinaryPlotThings$xx1; y.tmp=trinaryPlotThings$y1}
+			if(any(is.infinite(y.tmp))){
+				plot(.5,.5,col='white', main="Inverse ROC", xlab='1-sensitivity',ylab='specificity'); graphics::text(.5,.5,'Derivative contains Inf')
+			} else {
+					plot(x.tmp,y.tmp,type='l',lwd=4,ylim=c(0,1.08), main='Inverse ROC',xlab='1-sensitivity',ylab='specificity')
+			}
+
+			abline(h=trinaryDF$y.lo.inv,col='red1',lty=3,lwd=2)
+			abline(v=trinaryDF$x.lo.inv,col='red1',lty=3,lwd=2)
+			abline(0,1,lty=2)
+		}
 		
 		# inverse ROC'' -----------------------------------
-		if(!any(is.finite(plotThings$y1..))){
-			keep=which(!is.na(plotThings$y1..))
-			x.tmp=plotThings$x1out[keep]; y.tmp=plotThings$y1..[keep]
-		} 
-		plot(x.tmp,logmod(y.tmp),type='l', main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity' ')",xlim=c(0,1),ylim=range(logmod(plotThings$y1..),na.rm=T))
-		# 		else {
-		# 		plot(.5,.5,col='white', main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity' ')"); graphics::text(.5,.5,'Derivative contains Inf or NA')
-		# 		}
-		abline(h=y.lo)
-		abline(h=0,lty=2)
-		abline(v=out1$x.lo.inv,col='red1',lty=3,lwd=2)
-
+		if(is.null(trinaryPlotThings$y1..)) {
+				plot(.5,.5,col='white',main="logmod[(Inverse ROC)'']", xlab='1-sensitivity',ylab="logmod(specificity'')");
+				graphics::text(.5,.5,'Derivatives were not used for this model.\n 0% and 30% training presence quantiles\n were used instead')
+		} else {
+			if(!any(is.finite(trinaryPlotThings$y1..))){
+				keep=which(!is.na(trinaryPlotThings$y1..))
+				x.tmp=trinaryPlotThings$x1out[keep]; y.tmp=trinaryPlotThings$y1..[keep]
+			} else {x.tmp=trinaryPlotThings$x1out; y.tmp=trinaryPlotThings$y1..}
+			if(any(is.infinite(y.tmp)) | all(y.tmp==0,na.rm=T)){
+				plot(.5,.5,col='white', main="logmod[(Inverse ROC)'']", xlab='1-sensitivity',ylab="logmod(specificity'')"); graphics::text(.5,.5,'Derivative contains Inf')
+			} else {
+				plot(x.tmp,logmod(y.tmp),type='l', main="logmod[(Inverse ROC)'']",xlab='1-sensitivity',ylab="logmod(specificity'')",xlim=c(0,1),ylim=range(logmod(trinaryPlotThings$y1..),na.rm=T))
+			}
+		
+			#abline(h=y.lo) # not sure what this was supposed to be... was defined as 1-x.lo.inv in the modeling....
+			abline(h=0,lty=2)
+			abline(v=trinaryDF$x.lo.inv,col='red1',lty=3,lwd=2)
+		}
 		# for third derivative - works but not needed
-		# # 		plot(plotThings$xout,logmod(y...),type='l',col='black', log='y',xlim=c(0,1),main="ROC'''")
+		# # 		plot(trinaryPlotThings$xout,logmod(y...),type='l',col='black', log='y',xlim=c(0,1),main="ROC'''")
 		# # 		abline(h=0,lty=2)
 		# # 		abline(v=x.lo,col='darkgoldenrod2',lty=3,lwd=2)
-		# # 		abline(v=out1$hi.thresh.x,col='steelblue',lty=3,lwd=2)
+		# # 		abline(v=trinaryDF$hi.thresh.roc.x,col='steelblue',lty=3,lwd=2)
 		# # 		abline(v=x.lo,col='red1',lty=3,lwd=2)
 
 		# curvature; code works, idea doesn't
-		# # 		plot(plotThings$xout,c2,type='l',col='black',xlim=c(0,1), main=expression(paste(kappa,"(ROC)")))
+		# # 		plot(trinaryPlotThings$xout,c2,type='l',col='black',xlim=c(0,1), main=expression(paste(kappa,"(ROC)")))
 		# # 		abline(v=x.lo,col='red1',lty=3,lwd=2)
-		# # 		lines(plotThings$xout,c2.1,col='grey30')
-		# # 		lines(plotThings$xout,c2.2,col='grey60')
+		# # 		lines(trinaryPlotThings$xout,c2.1,col='grey30')
+		# # 		lines(trinaryPlotThings$xout,c2.2,col='grey60')
 		#abline(v=.y..f(rate,skew),lty=2)
 		##abline(v=x.root,col='blue',lty=2)
 		#lines(ss$x,ss$y,col='blue')
 		
-		if(addMapPlot){
-			print('not done')
-			# have to push all these args, which is annoying
-			# trinaryMapPlot(trinary.rasters,plotFile,pres=pres, expertRasterPath=expertRasterPath,expertShpPath=expertShpPath,shapesToPlot=shapesToPlot,openFig=T)
-		}
+# 		if(addMapPlot){
+# 			print('not done')
+# 			# have to push all these args, which is annoying
+# 			# trinaryMapPlot(trinaryRaster,plotFile,pres=pres, expertRasterPath=expertRasterPath,expertShpPath=expertShpPath,shapesToPlot=shapesToPlot,openFig=T)
+# 		}
 
 	
-	if(!is.null(ROCPlotFile))  grDevices::dev.off()
-	if(openFig)	system(paste0('open ', ROCPlotFile))
+	if(!is.null(plotFile))  grDevices::dev.off()
+	if(openFig & !is.null(plotFile))	system(paste0('open ', plotFile))
 }

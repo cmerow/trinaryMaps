@@ -6,10 +6,9 @@
 \usage{
 trinaryROCPlot(
   ROCPlotFile = NULL,
-  plotThings,
-  out1,
-  openFig = T,
-  addMapPlot = FALSE
+  trinaryPlotThings,
+  trinaryDF,
+  openFig = TRUE
 )
 }
 \value{

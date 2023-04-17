@@ -35,7 +35,7 @@ pres=
 bg=
 model=
 trinaryMapWorkflow(pres=pres, background=bg,model=model,
-                   modelNames=modelNames,species=species,
+                   modelNames=modelNames,main=species,
                    rasterOutputDir=rasterOutputDir,
                    mapPlotDir=mapPlotDir, 
                    shapesToPlot=shapesToPlot,openFig=openFig,

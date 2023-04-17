@@ -1,93 +1,78 @@
 #################################################################
 #################################################################
 #################################################################
-#' @title Apply trinary map tools to a set of continuous range maps
+#' Generate trinary maps from species presence, background and model
 #'
-#' @description Run all aspects of modeling and plotting for a suite of previously run models
+#' This function takes in the species presence and background data, along with a model, and generates trinary maps. It also calculates the range size and plots the maps and ROC curves.
 #'
-#' @details
-#' See Examples.
+#' @param pres A raster object containing the species presence data
+#' @param background A raster object containing the background data
+#' @param model A raster object containing the model data
+#' @param main An optional title for the main plot
+#' @param rasterOutputPath A character string specifying the path to save the trinary rasters
+#' @param mapPlotPath A character string specifying the path to save the trinary map plot
+#' @param ROCPlotPath A character string specifying the path to save the ROC curve plot
+#' @param maxTPQuantile A numeric value between 0 and 1 specifying the maximum true positive quantile to use for threshold selection
+#' @param shapesToPlot A list containing one or more SpatialPolygonsDataFrame objects to overlay on the map plot
+#' @param openFig A logical indicating whether the generated plots should be displayed in the R console
+#' @param NATo0 A logical indicating whether to turn NA values into zeros in the presence and background data
 #'
-#' @param dirs,
-#' @param stats
-#' @param env
-#' @param pres.f
-#' @param plot.f
-#' @param map.dir
-#' @param openFig=FALSE
-#' @param expertRaster.f=NULL
-
-# @keywords
+#' @return A list containing the trinary thresholds and trinary rasters
 #'
-# @examples
-#'
-#'
-#' @return a data.frame
-#' @author Cory Merow <cory.merow@@gmail.com>
-#' @note This is a convenience wrapper around each component of trinary map building.
-# @seealso
-# @references
-# @aliases - a list of additional topic names that will be mapped to
-# this documentation when the user looks them up from the command
-# line.
-# @family - a family name. All functions that have the same family tag will be linked in the documentation.
 #' @export
 trinaryMapWorkflow=function(pres,
 													  background,
 													  model,
-													  modelNames,
-													  species,
-													  rasterOutputDir=NULL,
-													  mapPlotDir=NULL,
-													  ROCPlotDir=NULL,
-													  #expertShpPath=NULL,
-													  #expertRasterPath=NULL,
+													  main=NULL,
+													  #modelNames,
+													  #species,
+													  #rasterOutputDir=NULL,
+													  #mapPlotDir=NULL,
+													  #ROCPlotDir=NULL,
+													  rasterOutputPath=NULL,
+													  mapPlotPath=NULL,
+													  ROCPlotPath=NULL,
+													  maxTPQuantile,
 													  shapesToPlot=NULL,
 													  openFig=T,
 													  NATo0=TRUE){
 	
 	#  for testing
-	#  background=bg1; doMapPlot=TRUE; doROCPlot=TRUE; ROCPlotDir=mapPlotDir
+	#  background=bg1; ROCPlotDir=mapPlotDir
 
 	p=raster::extract(model,pres)
 	a=raster::extract(model,background)
-	if(NATo0){
+	if(NATo0){ #optionally turn NA into zeros so they contribute to getting absences right. i chose to do this because bg from neightboring ecoregions are considered absences for this evaluation
 		a[is.na(a)]=0
 		p[is.na(p)]=0
 	}
 	p <- stats::na.omit(p)
 	a <- stats::na.omit(a)
-	message(paste0(species,': ',length(p),' presences and ',length(a),' background points used for building trinary maps'))
+	message(paste0(length(p),' presences and ',length(a),' background points used for building trinary maps'))
 	ins=rbind(data.frame(Y=1,X=p),data.frame(Y=0,X=a))
 
-	# fit auc curves
+	#== fit auc curves
 	threshs=tryCatch(trinaryROCRoots(ins=ins),error=function(e) e)
 	if(class(threshs)=='try-error'){
-		message(paste0(species, ": couldn't find roots of the ROC curve; this often happens if you have  very few presence or background points. so you're not getting any trinary maps'"))
+		message(paste0("Couldn't find roots of the ROC curve; this often happens if you have  very few presence or background points. So you're not getting any trinary maps."))
 		return(list(threshs=NULL,trinary.rasters=NULL))
 	}
 	
-	# make maps
+	#== make maps
 	trinary.rasters=trinaryMap(model,
-														 threshLo=threshs[[2]]$threshLo,
-														 threshHi=threshs[[2]]$threshHi,
-														 threshYouden=threshs[[2]]$threshYouden,
-														 modelNames=modelNames,
-														 species=species,
-														 rasterOutputDir=rasterOutputDir,
+														 threshLo=threshs[[1]]$threshLo,
+														 threshHi=threshs[[1]]$threshHi,
+														 rasterOutputPath=rasterOutputPath,
 														 overwrite=TRUE,format="GTiff",
 												 		 datatype="INT1U", options=c("COMPRESS=DEFLATE"))
 								
-	# calculate stats
-	range.size=trinaryRangeSize(trinary.rasters,model>threshs[[2]]$threshYouden)
+	#== calculate stats
+	range.size=trinaryRangeSize(trinary.rasters,model>threshs[[1]]$threshYouden)
 	
-	# plot
-	plotFile=paste0(mapPlotDir,modelNames,'.pdf')
+	#== plot
+	if(!is.null(mapPlotPath)) trinaryMapPlot(trinaryRaster=trinary.rasters,plotFile=mapPlotPath,  pres=pres, main=main, shapesToPlot=shapesToPlot,openFig=openFig)
 	
-	if(!is.null(mapPlotDir)) trinaryMapPlot(trinary.rasters=trinary.rasters,plotFile=plotFile, pres=pres, species=species, shapesToPlot=shapesToPlot,openFig=openFig)
-	
-	ROCPlotFile=paste0(ROCPlotDir,species,'_',modelNames,'ROC.pdf')
-	if(!is.null(ROCPlotDir)) trinaryROCPlot(ROCPlotFile,plotThings=threshs$plotThings,out1=threshs[[1]],openFig=openFig)
+	if(!is.null(ROCPlotPath)) trinaryROCPlot(trinaryPlotThings=threshs$plotThings,trinaryDF=threshs$trinaryDF,plotFile=ROCPlotPath,openFig=openFig)
 	
 	return(list(threshs=threshs,trinary.rasters=trinary.rasters))
 	

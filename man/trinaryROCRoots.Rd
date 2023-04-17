@@ -7,7 +7,7 @@
 trinaryROCRoots(ins, max.sens = 0.95, smoothMethod = "binormal", ...)
 }
 \arguments{
-\item{max.sens}{default is 0.95}
+\item{max.sens}{value of sensitivity to use if no upper limit is found based on derviatives. default is 0.95}
 
 \item{smoothMethod}{default is 'binormal'}
 

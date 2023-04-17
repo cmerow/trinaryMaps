@@ -5,12 +5,12 @@
 \title{Make Trinary maps from previous workflow runs}
 \usage{
 trinaryMapPlot(
-  trinary.rasters,
+  trinaryRaster,
   plotFile = NULL,
   pres = NULL,
   species,
   shapesToPlot = NULL,
-  openFig = T
+  openFig = TRUE
 )
 }
 \value{
